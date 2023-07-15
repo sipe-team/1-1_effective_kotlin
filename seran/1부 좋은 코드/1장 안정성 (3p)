@@ -1,0 +1,102 @@
+# 1장 안정성
+
+- 코틀린은 정말 안전한 언어지만, 정말로 안전하게 사용하려면 개발자가 뒷받침을 해야 한다.
+    - 1장의 목적은 **오류가 덜 발생하는 코드를 만드는 것**
+
+## 아이템 1 가변성을 제한하라
+
+### 가변성을 왜 제한해야 하나요?
+
+- 프로그램을 이해하고 디버그하기 힘들어짐
+    - 상태를 갖는 부분의 관계를 이해해야함
+    - 상태 변경을 추적해야함
+- 코드 실행 추론이 어려워짐
+    - 시점에 따라 값이 바뀔 수도 있고, 그 값을 알아야만 실행을 추론할 수 있음
+    - 한 시점에 확인한 값이 동일하다고 보장할 수도 없음
+- 멀티스레드 환경에서 동기화는 필수이므로, 가변성으로 인한 영향 범위를 최소화 해야함
+    - 애초에 멀티스레드 환경에서 동기화를 잘 구현하는건 굉장히 어려운 일임
+    - 허나 가변 지점이 많다면, 동기화 구현은 더 어려워질 것 임
+    - 따라서 가변 지점을 줄일 수록 좋음
+- 테스트가 어려워짐.
+    - 가변성에 대한 모든 경우를 테스트 해야함. 변경이 많을 수록 더 많은 조합을 테스트 해야함을 의미함.
+- 상태 변경으로 인한 영향 범위가 있을 수 있음. 이런 경우엔 다른 부분들에게 상태 변경을 전파 시켜야하므로, 비효율적이게 됨
+- 심지어 가변성을 엄격하게 제한하는 프로그래밍 언어도 있음 (= 순수 함수형 언어)
+    - ex. 하스켈
+
+### 코틀린에서 가변성 제한하기
+
+**읽기 전용 프로퍼티 (val)** 
+
+- value 임. var의 variable과 구분
+- var 프로퍼티를 get() 해오는 val 프로퍼티는 var 프로퍼티가 변할 때 변할수 있음
+    - 값을 추출할 때마다, 사용자 정의 getter가 호출되므로, 아래와 같이 동작함
+    
+    ```kotlin
+    var name: String = "sery"
+    var surname: String = "270"
+    val fullName: String
+    	get() = "$name + $surname"
+    
+    fun main() {
+    	println(fullName) // sery270
+    	name = "seran"
+    	println(fullName) // seran270
+    ```
+    
+- 값을 추출할 때마다, 사용자 정의 getter가 호출됨
+    
+    ```kotlin
+    
+    fun calculated: Int { print("Calculating... ") return 42 }
+    
+    val fizz = calculate() // -> calculate() 단순 리턴 값을 할당 받음 
+    val buzz
+    	get() = calculate() // -> 값을 가져올 때마다 calculate() 호출하도록 정의함 
+    
+    fun main() {
+    		print(fizz) // 42 
+    		print(fizz) // 42 
+    		print(buzz) // Calculating... 42 
+    		print(buzz) // Calculating... 42
+     }
+    ```
+    
+- 코드를 보았듯이, 읽기 전용 프로퍼티 val의 값은 변경될 수 있기는 하지만, 프로퍼티 레퍼런스 자체를 변경할 수는 없으므로 동기화 문제 등을 줄일 수 있음
+    - val과 스마트 캐스트
+        
+        ```kotlin
+        val name: String? = "Marton" 
+        val surname: String = "Braun"
+        
+        val fullName: String?
+        	get() = name?.let { “$it $surname" }
+        val fullName2: String? = name?.let { "$it $surname" }
+        
+        fun main() {
+        	if (fullName != null) { 
+        		println(fullName.length) // 오류 
+        	}
+        	if (fullName2 != null) { 
+        		printin(fullName2.length) // Marton Braun 
+        	}
+        }
+        ```
+        
+        - 세리 부연 설명
+            - fullName
+                - **fullName은 getter 정의**이므로, 값이 시점에 따라 바뀔 수 있음.
+                - if 문으로 null 체크를 했더라도, **동시성 이슈로 null이 될 수 있음**
+                - 따라서 스마트 캐스팅 되지 못해, 여전히 String? 타입이므로, length 호출 못함
+            - fullName2
+                - fullName2는 선언과 동시에 초기화 됨. 사용자 getter를 갖지 않음.
+                - 따라서 값이 변할 수 없으므로, if 문으로 null 체크를 한 이후에 값이 변할 여지가 없음.
+                - 따라서 String 타입으로 스마트 캐스팅 되어, length 호출 가능
+
+<aside>
+☺️ **JUMP TO** 아이템 16: 프로퍼티는 동작이 아니라 상태를 나타내야 한다
+
+</aside>
+
+**가변 컬렉션과 읽기 전용 컬렉션 구분하기**
+
+**데이터 클래스의 copy**
