@@ -148,9 +148,52 @@
     ```
     
 - 람다에서 변수를 캡처하므로, 스코프 설정시 주의해야한다.
+    
+    ```kotlin
+    // Sequence 로 리펙토링한 코드
+
+    val primes: Sequence<Int> = sequence {
+        var numbers = generateSequence(2) { it + 1 }
+        while (true) {
+            val prime = numbers.first() // while 문 안에서만 쓰이는 변수 prime이 외부 스코프에 선언
+            yield(prime) // suspend point!
+            numbers = numbers.drop(1).filter { it % prime != 0 }
+            print(numbers.toList())
+        }
+    }
+
+    print(primes.take(2).toList())
+
+
+    // Sequence 로 리펙토링 && 스코프를 잘못 사용하여 의도치 않은 결과를 초래하는 코드
+    //
+
+    // 📌 TIL 1. Sequence vs Iterable
+    // Sequence : 각각 하나의 element 에 대해 모든 단계를 수행한다.
+    // filter, drop과 같은 중간 연산에서는 바로 연산을 수행하지 않고 종단 연산인 first를 만날때까지 연산을 누적해서 대기
+    //
+    // Iterable : 전체 collection 에 대해 각 단계의 수행을 완료하고 다음 단계로 넘어간다.
+    // filter, drop, first 만나는 즉시 실행
+
+    // 📌 TIL 2. lambda capturing
+    // 람다 스코프에서 외부의 변수 사용
+
+    val primes: Sequence<Int> = sequence {
+        var numbers = generateSequence(2) { it + 1 }
+        var prime: Int
+        while (true) {
+            prime = numbers.first() // while 문 안에서만 쓰이는 변수 prime이 외부 스코프에 선언
+            yield(prime) // suspend point!
+            numbers = numbers.drop(1).filter { it % prime != 0 }
+            print(numbers.toList())
+        }
+    }
+
+    print(primes.take(2).toList())
     - 세리 부연 설명 ) lamda capturing
         - 람다 본문 블럭 내에서 외부 함수의 로컬 변수나 글로벌 변수등을 사용
         - *자바와 달리 코틀린 람다 안에서는 final 변수가 아닌 본래의 변수에 접근이 가능하며, 변경도 가능*
+    ```
 
 ### 아이템 6 사용자 정의 오류보다는 표준 오류를 사용하라
 
