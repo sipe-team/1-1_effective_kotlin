@@ -97,6 +97,81 @@
 
 </aside>
 
-**가변 컬렉션과 읽기 전용 컬렉션 구분하기**
+**가변 컬렉션(**mutable)**과 읽기 전용 컬렉션(**immutable**) 구분하기**
+
+- immutable 컬렉션은 mutable 컬렉션을 상속 받았다.
+- 컬렉션 다운 캐스팅은 하면 안된다
+    - immutable 컬렉션을 mutable 컬렉션으로 다운 캐스팅 하면 안된다
+- 다운 캐스팅 대신, copy() 를 활용하여 mmutable 컬렉션을 mutable 컬렉션으로 만들어야한다.
 
 **데이터 클래스의 copy**
+
+- immutable 객체는 동시성에 강하다
+- immutable 객체는 set과 map의 키로 사용 가능하다.
+    - 해시 테이블은 값 기반으로 버킷을 결정하기 때문에, 값 변경이 일어나면 키가 바뀌는 셈이다
+- **immutable 객체를 사용하면서 값 변경이 필요할 때엔, 데이터 클래스의 copy를 사용하여, immutable 특성을 보장하면서 값을 변경할 수 있다.**
+
+- 상태를 변경할 수 있는 불필요한 방법은 만들지 않는 것이 좋음
+- immutable 프로퍼티에 mutable 컬렉션을 사용하는 것 보다mutable 프로퍼티에 **immutable 컬렉션을 넣어 사용**하는 것이 좋음
+    - 멀티 스레드 안정성이 더 좋음
+    - 사용자 정의 세터를 통해 변경 추적 가능
+    
+    ```kotlin
+    val listl: MutableList<Int> = mutableListOf() 
+    var list2: List<Int> = listOf()
+    ```
+    
+- 상태를 나타내는 mutable 객체를 외부에 노출하는 것은 굉장히 위험
+
+- var보다는 val을 사용하는 것이 좋습니다.
+- mutable 프로퍼티보다는 immutable 프로퍼티를 사용하는 것이 좋습니다.
+- mutable 객체와 클래스보다는 immutable 객체와 클래스를 사용하는 것이 좋습니다.
+- 변경이 필요한 대상을 만들어야 한다면, immutable 데이터 클래스로 만들고 copy를 활용하는 것이 좋습니다.
+- 컬렉션에 상태를 저장해야 한다면, mutable 컬렉션보다는 읽기 전용 컬렉션을 사용하는 것이 좋습니다.
+- 변이지점을 적절하게 설계하고, 불필요한 변이지점은 만들지 않는 것이 좋습니다.
+- mutable 객체를 외부에 노출하지 않는 것이 좋습니다.
+
+### 아이템 2 변수의 스코프를 최소화하라
+
+- 프로퍼티보다는 지역 변수를 사용하는 것이 좋습니다.
+- 최대한 좁은 스코프를 갖게 변수를 사용합니다. 예를 들어 반복문 내부에서만 변수가 사용된다면, 변수를 반복문 내부에 작성하는 것이 좋습니다.
+    - mutable 프로퍼티는 좁은 스코프에 걸쳐 있을수록, 그 변경을 추적하는 것이 쉽다.
+- 변수를 정의할 때 초기화되는 것이 좋습니다
+- 여러 프로퍼티를 한꺼번에 설정해야 하는 경우에는 구조분해 선언(destmcturing declaration)을 활용하는 것이 좋습니다.
+    
+    ```kotlin
+    val (description, color) = when {
+    	degrees < 5 -> "cold" to Color.BLUE 
+    	degrees < 23 -> "mild" to Color.YELLOW
+    	else -> '’hot” to Color.RED 
+    }
+    ```
+    
+- 람다에서 변수를 캡처하므로, 스코프 설정시 주의해야한다.
+    - 세리 부연 설명 ) lamda capturing
+        - 람다 본문 블럭 내에서 외부 함수의 로컬 변수나 글로벌 변수등을 사용
+        - *자바와 달리 코틀린 람다 안에서는 final 변수가 아닌 본래의 변수에 접근이 가능하며, 변경도 가능*
+
+### 아이템 6 사용자 정의 오류보다는 표준 오류를 사용하라
+
+- 직접 오류를 정의하는 것보다는 최대한 표준 라이브러리의 오류를 사용하는 것이 가독성 측면에서 좋다.
+
+### 아이템 7 결과 부족이 발생할 경우 null과 Failure를 사용하라
+
+- 예외와 실패(오류)를 구분하라
+    - 예외 → 예측하기 어려운 범위의 오류
+        - throw
+    - 오류 → 충분히 예측 가능한 범위의 오류
+        - null, Result (Failure, Success)
+            - sealed class 인 Result 클래스
+                - when 식에서 활용도가 높음
+            - null vs Failure(Result)
+                - Failure는 null과 달리 처리할 때 필요한 정보를 가질 수 있음
+- 예)
+    - get → 예외로 처리
+        - 오류를 예측할 수 없는 경우, IndexOutOfBoundsException을 리턴
+    - getOrNull → 오류로 처리
+        - out of range 오류가 발생할 수 있다고 충분히 예측한 경우에 사용, null을 리턴
+            - null이 리턴될 수 있다고 알려, nullable 하게 대처 가능
+
+### 아이템 8 적절하게 null을 처리하라
